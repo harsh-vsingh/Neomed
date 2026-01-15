@@ -1,0 +1,41 @@
+# Core Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.10.3
+python-multipart==0.0.20
+
+# Data Processing
+pandas==2.2.3
+numpy==2.2.1
+
+# NLP & Embeddings
+sentence-transformers==3.3.1
+transformers==4.47.1
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+
+# Entity Extraction
+scispacy==0.5.5
+spacy==3.7.6
+# Run after install: python -m spacy download en_core_sci_sm
+
+# Vector Database
+faiss-cpu==1.9.0
+
+# Knowledge Graph
+neo4j==5.27.0
+py2neo==2021.2.4
+
+# LLM Integration
+groq==0.13.0
+openai==1.57.4
+
+# Utilities
+python-dotenv==1.0.1
+requests==2.32.3
+tqdm==4.67.1
+
+# Optional but recommended
+langchain==0.3.13
+langchain-community==0.3.13
