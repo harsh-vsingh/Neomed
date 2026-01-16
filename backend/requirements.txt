@@ -11,7 +11,7 @@ numpy==2.2.1
 # NLP & Embeddings
 sentence-transformers==3.3.1
 transformers==4.47.1
-torch==2.5.1
+# torch==2.5.1
 torchvision==0.20.1
 torchaudio==2.5.1
 
@@ -39,3 +39,6 @@ tqdm==4.67.1
 # Optional but recommended
 langchain==0.3.13
 langchain-community==0.3.13
+pypdf==3.17.4
+pytesseract==0.3.10
+Pillow==10.2.0
