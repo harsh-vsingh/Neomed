@@ -20,66 +20,62 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=GEMINI_API_KEY
 )
 
+JSON_SCHEMA = {
+    "patient_demographics": {"age": "string [N]", "sex": "string [N]"},
+    "chief_complaint": "string [N]",
+    "history_of_present_illness": "narrative paragraph with [N] after every claim",
+    "past_medical_history": ["item [N]", "item [N]"],
+    "medications": [{"name": "string", "dosage": "string", "citations": "[N]"}],
+    "allergies": ["item [N]"],
+    "procedures": ["item [N]"],
+    "diagnostic_findings": ["item [N]"],
+    "assessment": "final diagnosis [N]",
+    "plan": "next steps [N]",
+    "clinical_course": "chronological narrative with [N] after every sentence"
+}
+
 EXAMPLE_SUMMARY = {
-    "patient_demographics": {
-        "age": "74 years [1]",
-        "sex": "female [1]"
-    },
-    "chief_complaint": "Abdominal pain [2]",
-    "history_of_present_illness": "74-year-old female [1] with type 2 diabetes mellitus [3] presented with 2 days of abdominal pain [2].",
-    "past_medical_history": [
-        "Type 2 diabetes mellitus [3]",
-        "Hypertension [4]"
-    ],
+    "patient_demographics": {"age": "62 year old [1]", "sex": "male [1]"},
+    "chief_complaint": "Chest pain [2]",
+    "history_of_present_illness": "Patient presented with acute crushing chest pain [2] that began 2 hours prior to arrival [15]. Pain was associated with nausea [16].",
+    "past_medical_history": ["Coronary artery disease [3]", "Hypertension [4]"],
     "medications": [
-        {"name": "Lisinopril", "dosage": "10mg daily", "citations": "[5]"},
-        {"name": "Metformin", "dosage": "500mg twice daily", "citations": "[6]"}
+        {"name": "Aspirin", "dosage": "81mg daily", "citations": "[5]"},
+        {"name": "Lisinopril", "dosage": "20mg daily", "citations": "[6]"}
     ],
-    "procedures": [
-        "ERCP with sphincterotomy [7]"
-    ],
-    "diagnostic_findings": [
-        "Ultrasound showed pancreatic duct dilation [8]"
-    ],
-    "assessment": "Acute pancreatitis [9]",
-    "clinical_course": "Patient admitted to ICU [10]. Underwent ERCP [7]. Clinical improvement noted [11]."
+    "allergies": ["Penicillin [7]"],
+    "procedures": ["Cardiac catheterization [8]", "Stent placement to LAD [9]"],
+    "diagnostic_findings": ["ST elevation on EKG [10]", "Troponin elevated at 2.5 [11]"],
+    "assessment": "Acute Myocardial Infarction [12]",
+    "plan": "Start dual antiplatelet therapy [13] and transfer to Cardiac ICU [14]",
+    "clinical_course": "Patient stabilized after catheterization [8]. Vital signs remained stable overnight [17]. Improvement noted on Day 2 [18]."
 }
 
 prompt_template = ChatPromptTemplate.from_messages([
-    ("system", """You are a medical documentation specialist. Generate a comprehensive medical summary using ONLY the provided entities.
+    ("system", """You are a specialized Medical Documentation AI. Your task is to transform raw medical entities into a structured JSON summary.
 
-CITATION RULES:
-1. Each fact gets EXACTLY ONE citation: "Hypertension [2]"
-2. Do NOT use multiple citations for one fact: WRONG → "Pancreatitis [1][11]"
-3. Only use citation numbers from the input ([1], [2], [3], etc.)
-4. Do NOT invent citation numbers
-5. Place citation at the end of each claim or sentence
-6. List each condition separately with its own citation:
-   - CORRECT: ["Hypertension [2]", "Diabetes [3]"]
-   - WRONG: ["Hypertension and diabetes [2][3]"]
+### CRITICAL RULES:
+1. **Source Truth**: Use ONLY the information provided in the entities and their context. Do not add outside medical knowledge.
+2. **Exactly One Citation**: Every medical fact must have exactly ONE citation (e.g., [1]). 
+   - WRONG: "Hypertension [1][2]"
+   - RIGHT: "Hypertension [1]"
+3. **No Invention**: Use only the Citation IDs provided in the input. Never invent a citation ID like [999].
+4. **Citation Placement**: 
+   - In lists and strings: Place [N] immediately after the fact.
+   - In Medications: Place [N] ONLY in the dedicated "citations" field.
+5. **Combined Facts**: If a sentence contains facts from different citations, cite them individually: "Hypertension [4] and Diabetes [5]".
+6. **Empty Fields**: If no entities exist for a specific section, return an empty array [] or null. Do NOT write "None" or "Not applicable".
+7. **Contextual Detail**: Use the provided 'Context' to add relevant clinical descriptions (e.g., instead of just "Pain", use "Severe radiating chest pain" if the context supports it).
 
-MEDICATION RULES:
-- One citation per medication (covers both name and dosage)
-- Put citation ONLY in "citations" field
-- CORRECT: {{"name": "Lisinopril", "dosage": "10mg daily", "citations": "[5]"}}
-- WRONG: {{"name": "Lisinopril [5]", "dosage": "10mg daily [5]", "citations": "[5]"}}
+### JSON SCHEMA:
+{json_schema}
 
-GENERAL RULES:
-- Cite demographics if present: {{"age": "74y [1]", "sex": "female [1]"}}
-- For empty fields use [], do NOT write "None noted"
-- Use medical terminology from entities
-- Add context details when clinically relevant (e.g., "severe", "radiating")
-- Do NOT add interpretations not in source
-
-OUTPUT FORMAT:
-{example}
-
-Remember: Every fact needs EXACTLY ONE citation."""),
-    ("human", """Input Entities with Citation IDs:
-
+### EXAMPLE OUTPUT:
+{example}"""),
+    ("human", """### INPUT ENTITIES WITH CITATION IDs:
 {entities}
 
-Generate the medical summary with proper citations.""")
+Generate the medical summary in the required JSON format following all rules strictly.""")
 ])
 
 output_parser = JsonOutputParser()
@@ -144,21 +140,20 @@ def validate_citations(summary: Dict[str, Any], citation_map: Dict[str, Any]) ->
             "coverage_percent": round(len(used_citations) / len(available_citations) * 100, 1) if available_citations else 0
         }
     }
-
 def generate_medical_summary(timeline_with_entities, citation_map: Dict[str, Any]) -> Dict[str, Any]:
     try:
-        # Debugging: Print the Citation Map
-        print("\n--- DEBUG: Citation Map ---")
-        print(json.dumps(citation_map, indent=2, default=str)) # default=str to handle non-serializable objects
-        print("---------------------------\n")
-
+        # Format the context-rich entities for the LLM
         entities_text = format_entities_for_prompt(timeline_with_entities)
         
-        example_json = json.dumps(EXAMPLE_SUMMARY, indent=2)
+        # Prepare the static parts of the prompt
+        schema_str = json.dumps(JSON_SCHEMA, indent=2)
+        example_str = json.dumps(EXAMPLE_SUMMARY, indent=2)
         
+        # Run the chain
         result = chain.invoke({
             "entities": entities_text,
-            "example": example_json
+            "json_schema": schema_str,
+            "example": example_str
         })
         
         validation = validate_citations(result, citation_map)
