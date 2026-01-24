@@ -4,12 +4,33 @@ import pytesseract
 from PIL import Image
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import boto3
+import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 class SmartClinicalParser:
     """
     Advanced parser for clinical documents.
     Handles: Hybrid OCR, Noise Cleaning, and TimeStamp-Aware Chunking.
     """
+
+    def __init__(self):
+        try:
+            self.textract = boto3.client(
+                'textract',
+                region_name=os.getenv('AWS_REGION', 'us-east-1'),
+                aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
+            )
+            self.has_aws = True
+        except Exception as e:
+            print(f" AWS Textract not configured: {e}")
+            self.has_aws = False
+    
+
     
     def parse_document(self, file_content: bytes, filename: str) -> dict:
         """
@@ -55,20 +76,35 @@ class SmartClinicalParser:
         elif filename.endswith('.txt'):
             return content.decode('utf-8', errors='ignore')
 
-        # Strategy B: Fallback to OCR if text is suspicious (too short or empty)
-        # Only try OCR if it's NOT a text file (text files are already pure text)
-        if not filename.endswith('.txt') and len(extracted_text.strip()) < 50:
-            if filename.endswith('.pdf'):
-                # Note: Requires pdf2image for actual OCR on PDF implementation
-                pass 
-            elif filename.endswith(('.png', '.jpg', '.jpeg')):
-                try:
-                    image = Image.open(io.BytesIO(content))
-                    extracted_text = pytesseract.image_to_string(image)
-                except Exception as e:
-                    raise ValueError(f"OCR Failed: {e}")
+        is_scanned_pdf = filename.endswith('.pdf') and len(extracted_text.strip()) < 50
+        is_image = filename.endswith(('.png', '.jpg', '.jpeg', '.tiff'))
+
+        if(is_image):
+            print("calling AWS Textract for image")
+            return self.call_aws_textract(content)
         
         return extracted_text
+    
+    def call_aws_textract(self, content: bytes) -> str:
+        """Sends bytes to AWS Textract and returns raw line text"""
+        if not self.has_aws:
+            return "Error: AWS Credentials missing."
+            
+        try:
+            response = self.textract.detect_document_text(
+                Document={'Bytes': content}
+            )
+            
+            text_blocks = []
+            for item in response['Blocks']:
+                if item['BlockType'] == 'LINE':
+                    text_blocks.append(item['Text'])
+            
+            return "\n".join(text_blocks)
+            
+        except Exception as e:
+            print(f" AWS Textract Failed: {e}")
+            return ""
 
     def _clean_noise(self, text: str) -> str:
         """Sanitizes the text stream."""
@@ -245,3 +281,8 @@ Discharge planning with close outpatient follow-up once clinically stable
     
     # Print JSON Output
     print(json.dumps(result, indent=2))
+
+
+
+
+

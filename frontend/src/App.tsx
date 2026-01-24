@@ -18,7 +18,7 @@ function App() {
     } catch (error) {
       console.error("Backend Error:", error);
       alert("Failed to connect to backend. Check console.");
-    } finally {
+    } finally{
       setLoading(false);
     }
   };
@@ -51,6 +51,7 @@ function App() {
                 <Mic className="w-4 h-4" /> Dictate
               </button>
               <button className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 text-slate-600 rounded-lg text-sm font-medium transition-colors">
+                
                 <Upload className="w-4 h-4" /> Upload PDF
               </button>
             </div>

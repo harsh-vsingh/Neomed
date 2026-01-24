@@ -1,5 +1,9 @@
 venv/
 # Large datasets
-backend/data/*.json
-backend/data/*.jsonl
-backend/data/*.parquet
+data/*.json
+data/*.jsonl
+data/*.parquet
+tests/
+.env
+
+
