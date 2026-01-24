@@ -179,6 +179,7 @@ def process_date_chunks(chunks: List[Dict[str, str]],
         
         results.append({
             "date": date,
+            "text": text,
             "entities": entities
         })
     
