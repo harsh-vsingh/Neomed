@@ -1,9 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 import uvicorn
-from utils.text_extractor import TextExtractor
+# from utils.text_extractor import TextExtractor
 from fastapi.middleware.cors import CORSMiddleware
+from utils.smart_parser import SmartClinicalParser
 
 app = FastAPI(title="NeoMed Backend API", version="1.0.0")
 
@@ -15,15 +16,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+parser = SmartClinicalParser()
 
 class NoteRequest(BaseModel):
     text: str
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class AnalysisResponse(BaseModel):
-    summary:str
-    original_length:int
-    source_type:str
+    summary: str
+    timeline: List[Dict[str, Any]]
+    differential_diagnosis: List[Dict[str, Any]]
 
 
 @app.post("/")
@@ -46,14 +48,20 @@ async def analyze_text(request: NoteRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text content is empty.")
     
+    parsed_result = parser.parse_document(request.text.encode('utf-8'), "input_text.txt")
+    
     # Placeholder analysis logic (gliner logic)
-    response = AnalysisResponse(
-        summary=f"Received text with {len(request.text)} characters.",
-        original_length=len(request.text),
-        source_type="direct_text"
-    )
+    return {
+        "summary": "Patient presents with chronic conditions (COPD, CHF) worsening over time.", 
+        "timeline": parsed_result['timeline'],
+        "differential_diagnosis": [
+            {"disease": "Acute Decompensated Heart Failure", "confidence": 0.92, "evidence": ["Edema", "Orthopnea", "Elevated BNP"]},
+            {"disease": "COPD Exacerbation", "confidence": 0.85, "evidence": ["Wheezing", "History of smoking"]},
+            {"disease": "Pneumonia", "confidence": 0.45, "evidence": ["Age", "Dyspnea"]}
+        ]
+    }
 
-    return response
+    
 
 @app.post("/analyze/file", response_model=AnalysisResponse)
 async def analyze_file(file: UploadFile = File(...)):
@@ -64,17 +72,21 @@ async def analyze_file(file: UploadFile = File(...)):
 
     try:
         contents = await file.read()
-        extracted_text = TextExtractor.extract_from_file(contents, file.filename)
+        # extracted_text = TextExtractor.extract_from_file(contents, file.filename)
+        parsed_result = parser.parse_document(contents, file.filename)
 
-        if not extracted_text.strip():
+        if not parsed_result['timeline']:
             raise HTTPException(status_code=400, detail="could not extract text from the uploaded file.")
         # Placeholder analysis logic (gliner logic)
-        response = AnalysisResponse(
-            summary=f"Extracted text with {len(extracted_text)} characters from file.",
-            original_length=len(extracted_text),
-            source_type="file_upload"
-        )   
-        return response
+        return {
+            "summary": f"Extracted text from file.",
+            "timeline": parsed_result['timeline'],
+            "differential_diagnosis": [
+                {"disease": "Acute Decompensated Heart Failure", "confidence": 0.92, "evidence": ["Edema", "Orthopnea", "Elevated BNP"]},
+                {"disease": "COPD Exacerbation", "confidence": 0.85, "evidence": ["Wheezing", "History of smoking"]},
+                {"disease": "Pneumonia", "confidence": 0.45, "evidence": ["Age", "Dyspnea"]}
+            ]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
     

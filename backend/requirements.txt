@@ -36,4 +36,12 @@ tqdm==4.67.1
 langchain==0.3.13
 langchain-community==0.3.13
 pypdf==3.17.4
+<<<<<<< HEAD
 pytesseract==0.3.10
+=======
+pytesseract==0.3.10
+Pillow==10.2.0
+
+langchain-text-splitters==0.0.1
+boto3
+>>>>>>> c151753db7c109f8f1f2e68cf39172e1a2dfd680
