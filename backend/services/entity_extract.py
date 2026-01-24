@@ -127,6 +127,8 @@ def extract_medical_entities(text: str, context_window: int = 5,
         used_indices.add(i)
         entities_in_group = 1  # Already added the base entity
         
+        entities_in_group = 1  # Already added the base entity
+        
         for j in range(i + 1, len(entities)):
             if j in used_indices:
                 continue

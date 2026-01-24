@@ -53,22 +53,24 @@ Structured Summary + Clinical Insights
 
 ## 📁 Project Structure
 
+```text
 Neomed/
 ├── backend/
-│ ├── app.py # FastAPI entry point
-│ ├── summarizer.py # LLM-based summarization
-│ ├── entity_extract.py # Medical entity extraction
-│ ├── smart_parser.py # File/text parsing
-│ └── kq_query.py # Knowledge queries
+│   ├── app.py              # FastAPI entry point
+│   ├── summarizer.py       # LLM-based summarization
+│   ├── entity_extract.py   # Medical entity extraction
+│   ├── smart_parser.py     # File/text parsing
+│   └── kq_query.py         # Knowledge queries
 │
 ├── frontend/
-│ ├── src/
-│ │ ├── App.tsx
-│ │ ├── Dashboard.tsx
-│ │ └── LandingPage.tsx
-│ └── index.html
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── Dashboard.tsx
+│   │   └── LandingPage.tsx
+│   └── index.html
 │
 └── README.md
+```
 
 ## ⚙️ Environment Variables
 
@@ -81,7 +83,7 @@ GEMINI_API_KEY=your_gemini_api_key
 
 ## ▶️ Running the Project Locally
 
-1️⃣ Backend Setup
+### 1️⃣ Backend Setup
 
 ```bash
 cd backend
@@ -126,7 +128,7 @@ text = Patient clinical notes
 
 ### 🔐 Safety & Medical Disclaimer
 
-⚠️ This application provides **AI-assisted summaries and clinical considerations only**  
+ This application provides **AI-assisted summaries and clinical considerations only**  
 and does **not provide medical diagnosis or treatment**.
 
 All outputs must be reviewed by a **qualified healthcare professional**.
@@ -141,7 +143,7 @@ POST /analyze
 Form Data:
 
 text: Patient clinical notes
-##🔐 Safety & Medical Disclaimer
+## Safety & Medical Disclaimer
 
 ⚠️ This application provides AI-assisted summaries and clinical considerations only
 and does not provide medical diagnosis or treatment.
