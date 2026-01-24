@@ -1,13 +1,13 @@
-import { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
+import { Link } from "react-router-dom";
 import { 
   Stethoscope, Upload, Activity, Sun, Moon, FileText, Settings, 
   LogOut, Brain, CheckCircle2, Sparkles, User, 
   ListChecks, AlignLeft, Info, GitBranch, AlertTriangle, Pill, ClipboardList, Thermometer,
-  BookOpen // New icon for Evidence tab
+  BookOpen, Eye, Edit3 // Added Eye/Edit icons
 } from "lucide-react";
-import axios from "axios";
-import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 // --- TYPES ---
 
@@ -66,9 +66,26 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   
-  // Add 'evidence' to activeTab state
+  // Highlight State
+  const [highlightContext, setHighlightContext] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
   const [activeTab, setActiveTab] = useState<'summary' | 'diagnosis' | 'evidence'>('summary');
   const [expandedDiagnosis, setExpandedDiagnosis] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'edit' | 'view'>('edit'); // Track View Mode
+
+  // Scroll to highlight when it changes
+  useEffect(() => {
+    if (highlightContext && viewMode === 'view') {
+        // Short delay to allow render
+        setTimeout(() => {
+            const mark = document.getElementById('highlight-mark');
+            if (mark) {
+                mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    }
+  }, [highlightContext, viewMode]);
 
   // --- API HANDLERS ---
 
@@ -83,6 +100,7 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
         text: inputText,
       });
       setResult(response.data);
+      setViewMode('view'); // Auto-switch to view mode
     } catch (error: any) {
       console.error("Backend Error:", error);
       alert(`Analysis Failed: ${error.response?.data?.detail || error.message}`);
@@ -106,13 +124,40 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
       const response = await axios.post("http://localhost:8000/analyze/file", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setResult(response.data);
+      
+      const data = response.data;
+      setResult(data);
+
+      // Reconstruct Text from Timeline for Display
+      if (data.timeline && Array.isArray(data.timeline)) {
+          const extractedText = data.timeline
+            .map((t: any) => `Timeframe: ${t.date}\n${t.text || ''}`)
+            .join("\n\n----------------------------------------\n\n");
+          
+          setInputText(extractedText);
+          setViewMode('view'); // Switch to view mode to show text
+      }
+
     } catch (error: any) {
       console.error("Backend Error:", error);
       alert(`File Upload Failed: ${error.response?.data?.detail || error.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCitationClick = (citationRef: string) => {
+      // citationRef is like "[1]" or just "1"
+      const id = citationRef.replace(/[\[\]]/g, '');
+      
+      if (result?.citation_map?.[id]) {
+          const context = result.citation_map[id].context;
+          setHighlightContext(context);
+          setViewMode('view'); // Force view mode
+          
+          // Debug
+          console.log("Highlighting context:", context);
+      }
   };
 
   // --- RENDER HELPERS ---
@@ -135,25 +180,41 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
              <ul className="list-disc pl-4 space-y-1">
                {content.map((item, idx) => {
                  if (typeof item === 'object' && item !== null) {
-                    // Handle medication objects {name, dosage, citations}
+                    // Handle medication objects
                     return (
                         <li key={idx}>
                             <span className="font-medium text-slate-800 dark:text-slate-200">{item.name}</span>
                             {item.dosage && <span className="text-slate-500 dark:text-slate-500 text-xs ml-2 rounded-full bg-slate-200 dark:bg-slate-800 px-2 py-0.5">{item.dosage}</span>}
-                             {/* Small citation badge if available */}
-                            {item.citations && <sup className="text-indigo-500 font-bold text-[10px] ml-1 cursor-help" title="See Evidence Tab">{item.citations}</sup>}
+                            {item.citations && (
+                                <sup 
+                                    className="text-indigo-500 font-bold text-[10px] ml-1 cursor-pointer hover:underline" 
+                                    onClick={() => handleCitationClick(item.citations)}
+                                >
+                                    {item.citations}
+                                </sup>
+                            )}
                         </li>
                     )
                  }
-                 return <li key={idx} dangerouslySetInnerHTML={{__html: typeof item === 'string' ? item.replace(/\[(\d+)\]/g, '<sup class="text-indigo-500 font-bold ml-0.5 cursor-pointer">[$1]</sup>') : item}} />
+                 return (
+                    <li key={idx}>
+                        {/* Split text by citation pattern [x] and render clickable spans */}
+                        {typeof item === 'string' ? item.split(/(\[\d+\])/g).map((part, i) => {
+                             if (/^\[\d+\]$/.test(part)) {
+                                 return <sup key={i} onClick={() => handleCitationClick(part)} className="text-indigo-500 font-bold cursor-pointer hover:underline ml-0.5">{part}</sup>
+                             }
+                             return <span key={i}>{part}</span>
+                        }) : item}
+                    </li>
+                 );
                })}
              </ul>
            ) : (
-                // Simple regex to highlight [1], [2] in text blocks
+                // Simple regex to text blocks
              <p className="whitespace-pre-line">
                 {content.split(/(\[\d+\])/g).map((part: string, i: number) => 
                     /^\[\d+\]$/.test(part) 
-                    ? <sup key={i} className="text-indigo-500 font-bold cursor-pointer text-[10px]">{part}</sup> 
+                    ? <sup key={i} onClick={() => handleCitationClick(part)} className="text-indigo-500 font-bold cursor-pointer hover:underline text-[10px]">{part}</sup> 
                     : part
                 )}
              </p>
@@ -198,16 +259,25 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
         {/* Workspace Grid */}
         <div className="flex-1 p-4 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-hidden max-w-[1920px] mx-auto w-full">
              
-             {/* LEFT: Editor Pane */}
+             {/* LEFT: Editor/Viewer Pane */}
              <div className="flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden group focus-within:ring-2 ring-indigo-500/30 transition-all">
                 
-                {/* Editor Toolbar */}
+                {/* Editor Toolbar with Toggle */}
                 <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-4 bg-slate-50/50 dark:bg-slate-900/50">
-                   <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                         <FileText className="w-3 h-3 text-indigo-500 animate-pulse" />
-                         <span className="text-xs font-bold text-slate-600 dark:text-slate-300">NOTE_EDITOR</span>
-                      </div>
+                   <div className="flex items-center gap-2 p-1 bg-slate-200 dark:bg-slate-800 rounded-lg">
+                      <button 
+                        onClick={() => setViewMode('edit')}
+                        className={`flex items-center gap-2 px-3 py-1 text-xs font-bold rounded ${viewMode === 'edit' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}
+                      >
+                         <Edit3 className="w-3 h-3" /> INPUT
+                      </button>
+                      <button 
+                         onClick={() => setViewMode('view')}
+                         disabled={!inputText}
+                         className={`flex items-center gap-2 px-3 py-1 text-xs font-bold rounded ${viewMode === 'view' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}
+                      >
+                         <Eye className="w-3 h-3" /> PREVIEW
+                      </button>
                    </div>
                    
                    <label className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 transition cursor-pointer shadow-sm group/btn">
@@ -217,14 +287,36 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
                    </label>
                 </div>
 
-                {/* Text Area */}
-                <textarea 
-                  className="flex-1 p-6 bg-transparent outline-none resize-none text-slate-700 dark:text-slate-300 font-mono text-sm leading-8 placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                  placeholder="// ENTER CLINICAL DATA...&#10;&#10;PATIENT:    58M&#10;CC:         Substernal Chest Pain (8/10)&#10;ONSET:      2 hours ago&#10;VITALS:     BP 160/95, HR 110, O2 94% RA&#10;HISTORY:    HTN (non-compliant), Hyperlipidemia"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  spellCheck="false"
-                />
+                {/* Content Area - Toggle between Textarea and Div */}
+                {viewMode === 'edit' ? (
+                    <textarea 
+                    className="flex-1 p-6 bg-transparent outline-none resize-none text-slate-700 dark:text-slate-300 font-mono text-sm leading-8 placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                    placeholder="// ENTER CLINICAL DATA...&#10;&#10;PATIENT:    58M&#10;CC:         Substernal Chest Pain (8/10)&#10;ONSET:      2 hours ago&#10;VITALS:     BP 160/95, HR 110, O2 94% RA&#10;HISTORY:    HTN (non-compliant), Hyperlipidemia"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    spellCheck="false"
+                    />
+                ) : (
+                    <div className="flex-1 p-6 overflow-y-auto font-mono text-sm leading-8 text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-black/20 whitespace-pre-wrap">
+                        {highlightContext ? (
+                            // Render text with highlight
+                            inputText.split(highlightContext).map((part, i, arr) => (
+                                <span key={i}>
+                                    {part}
+                                    {i < arr.length - 1 && (
+                                        <mark 
+                                            id="highlight-mark"
+                                            className="bg-yellow-200 dark:bg-yellow-900/50 text-slate-900 dark:text-white px-1 py-0.5 rounded border border-yellow-300 dark:border-yellow-700 shadow-[0_0_15px_rgba(234,179,8,0.3)] animate-pulse"
+                                        >
+                                            {highlightContext}
+                                        </mark>
+                                    )}
+                                </span>
+                            ))
+                        ) : inputText}
+                    </div>
+                )}
+
 
                 {/* Action Bar */}
                 <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#0B0F19] flex justify-between items-center">
@@ -434,19 +526,20 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
                                                   {diag.disease}
                                               </h4>
                                               <div className="flex items-center gap-3 mt-2 text-xs">
-                                                  <span className="text-slate-500 font-mono">Matched {diag.matches} Symptoms</span>
-                                                  {diag.confidence_score > 20 && (
-                                                     <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                                                        <CheckCircle2 className="w-3 h-3" /> Strong Evidence
-                                                     </span>
-                                                  )}
+                                                 <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium">
+                                                    Matched: {diag.matches}
+                                                 </span>
+                                                 <span className="text-slate-400 font-mono">
+                                                     {diag.matched_symptoms.slice(0, 3).join(", ")}
+                                                     {diag.matched_symptoms.length > 3 && "..."}
+                                                 </span>
                                               </div>
                                             </div>
                                         </div>
                                         
                                         <div className="text-right">
                                             <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 slashed-zero">
-                                                {Math.min(99, Math.round(diag.confidence_score * 2))}%
+                                                {diag.confidence_score}%
                                             </div>
                                             <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Confidence</div>
                                         </div>
@@ -460,25 +553,17 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
                                                 exit={{ height: 0, opacity: 0 }}
                                                 className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800"
                                             >
-                                                <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                                    <GitBranch className="w-4 h-4" /> Evidence Trace (Knowledge Graph)
-                                                </div>
-                                                
-                                                <div className="space-y-2">
-                                                    {diag.trace_chain?.map((path, pIdx) => (
-                                                        <div key={pIdx} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 text-xs font-mono">
-                                                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">{path?.start_node}</span>
-                                                            <div className="flex-1 flex items-center gap-2 justify-center opacity-40">
-                                                                <div className="h-px bg-slate-400 w-4"></div>
-                                                                <span className="text-[9px] uppercase">{path?.relationship || 'LINK'}</span>
-                                                                <div className="h-px bg-slate-400 w-4"></div>
-                                                            </div>
-                                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded">
-                                                                {path?.end_node}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                               <h5 className="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Logic Trace</h5>
+                                               <div className="space-y-2">
+                                                 {diag.trace_chain?.map((trace, tIdx) => (
+                                                    <div key={tIdx} className="flex items-center text-xs font-mono text-slate-500 bg-slate-50 dark:bg-slate-800/50 p-2 rounded border border-slate-200 dark:border-slate-800">
+                                                        <span className="text-indigo-500 font-bold mr-2">{trace.start_node}</span>
+                                                        <span className="text-slate-300 mx-2">--[{trace.relationship}]--&gt;</span>
+                                                        <span className="text-slate-700 dark:text-slate-300">{trace.end_node}</span>
+                                                        <span className="ml-auto text-[10px] text-slate-400 border border-slate-200 dark:border-slate-700 px-1 rounded">{trace.source_db}</span>
+                                                    </div>
+                                                 ))}
+                                               </div>
                                             </motion.div>
                                         )}
                                       </AnimatePresence>
@@ -500,32 +585,32 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
                                 
                                 <div className="grid gap-4">
                                     {Object.entries(result.citation_map).map(([key, value]: [string, any]) => (
-                                        <div key={key} id={`citation-${key}`} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm scroll-mt-20">
+                                        <div 
+                                            key={key} 
+                                            id={`citation-${key}`} 
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm scroll-mt-20 cursor-pointer hover:border-indigo-400 transition-colors"
+                                            onClick={() => {
+                                                setHighlightContext(value.context);
+                                                setViewMode('view');
+                                            }}
+                                        >
                                             <div className="flex items-start gap-4">
                                                 <div className="w-8 h-8 shrink-0 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 font-bold rounded-lg flex items-center justify-center text-sm border border-indigo-200 dark:border-indigo-800">
                                                     [{key}]
                                                 </div>
                                                 <div className="flex-1 space-y-2">
-                                                    {/* Context Window / Original Text */}
-                                                    <div>
-                                                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Original Text Context</h4>
-                                                        <p className="text-sm font-serif leading-relaxed text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 italic">
-                                                            "... {value.context} ..."
-                                                        </p>
+                                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                                        {value.date} • Confidence: {(value.entities[0]?.confidence * 100).toFixed(0)}%
                                                     </div>
-
-                                                    {/* Extracted Entities */}
-                                                    <div className="flex flex-wrap gap-2 pt-2">
-                                                        {value.entities?.map((ent: any, i: number) => (
-                                                            <span key={i} className="inline-flex items-center px-2 py-1 rounded text-xs font-mono bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/30">
-                                                                {ent.text} <span className="opacity-50 ml-1 ml-1 text-[9px]">{ent.label}</span>
-                                                            </span>
-                                                        ))}
-                                                        {value.date && value.date !== 'N/A' && (
-                                                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-mono bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800/30">
-                                                                📅 {value.date}
-                                                            </span>
-                                                        )}
+                                                    <p className="text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded border border-slate-100 dark:border-slate-700">
+                                                       "{value.context}"
+                                                    </p>
+                                                    <div className="flex gap-2 flex-wrap">
+                                                       {value.entities.map((e: any, i: number) => (
+                                                          <span key={i} className="text-[10px] px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+                                                             {e.label}: <b>{e.text}</b>
+                                                          </span>
+                                                       ))}
                                                     </div>
                                                 </div>
                                             </div>
