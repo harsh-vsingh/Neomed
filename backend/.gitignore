@@ -6,4 +6,5 @@ data/*.parquet
 tests/
 .env
 
-
+__pycache__/
+services/__pycache__/
