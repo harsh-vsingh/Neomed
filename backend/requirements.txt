@@ -12,16 +12,12 @@ numpy==2.2.1
 sentence-transformers==3.3.1
 transformers==4.47.1
 # torch==2.5.1
-torchvision==0.20.1
-torchaudio==2.5.1
+torchvision
+torchaudio
 
-# Entity Extraction
-scispacy==0.5.5
-spacy==3.7.6
-# Run after install: python -m spacy download en_core_sci_sm
 
 # Vector Database
-faiss-cpu==1.9.0
+faiss-cpu
 
 # Knowledge Graph
 neo4j==5.27.0
@@ -41,4 +37,3 @@ langchain==0.3.13
 langchain-community==0.3.13
 pypdf==3.17.4
 pytesseract==0.3.10
-Pillow==10.2.0
