@@ -7,11 +7,12 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(theme);
+    
+
     localStorage.setItem("theme", theme);
   }, [theme]);
 
@@ -20,14 +21,13 @@ function App() {
   };
 
   return (
-    <div className={theme}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage toggleTheme={toggleTheme} currentTheme={theme} />} />
-          <Route path="/app" element={<Dashboard toggleTheme={toggleTheme} currentTheme={theme} />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
+    // No need for className={theme} wrapper anymore since it's on <html>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage toggleTheme={toggleTheme} currentTheme={theme} />} />
+        <Route path="/app" element={<Dashboard toggleTheme={toggleTheme} currentTheme={theme} />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

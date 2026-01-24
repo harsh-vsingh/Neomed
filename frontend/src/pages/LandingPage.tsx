@@ -9,6 +9,36 @@ import { motion } from "framer-motion";
 export default function LandingPage({ toggleTheme, currentTheme }: { toggleTheme: () => void, currentTheme: string }) {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+         <div className="fixed inset-0 z-0 pointer-events-none">
+           
+           {/* 1. Base Grid (Adaptive) */}
+           <div 
+             className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)]" 
+             style={{ backgroundSize: '40px 40px' }}
+           ></div>
+           
+           {/* 2. Dynamic Ambient Blobs (Brighter in Dark Mode) */}
+           <div className="absolute -top-[10%] -right-[10%] w-[50vh] h-[50vh] bg-blue-400/20 dark:bg-indigo-500/30 rounded-full blur-[100px] animate-pulse"></div>
+           <div className="absolute top-[40%] -left-[10%] w-[40vh] h-[40vh] bg-purple-400/20 dark:bg-fuchsia-600/20 rounded-full blur-[100px]"></div>
+           <div className="absolute -bottom-[10%] right-[20%] w-[60vh] h-[60vh] bg-indigo-400/10 dark:bg-blue-600/20 rounded-full blur-[120px]"></div>
+
+           {/* 3. Dark Mode Exclusive: "Deep Space" Overlay */}
+           <div className="hidden dark:block absolute inset-0">
+               
+               {/* Top Spotlight (Stronger) */}
+               <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[60%] h-125 bg-indigo-500/20 blur-[120px] rounded-full mix-blend-screen"></div>
+               
+               {/* Star Dust (High Contrast) */}
+               <div 
+                 className="absolute inset-0 bg-[radial-gradient(white_1px,transparent_1px)] opacity-50"
+                 style={{ backgroundSize: '30px 30px' }}
+               ></div>
+
+               {/* Noise Texture (Subtle Grain) */}
+               <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+           </div>
+
+      </div>
       
       {/* 1. Navbar (Floating & Centered content) */}
       <nav className="fixed w-full z-50 px-6 py-4">
@@ -71,111 +101,158 @@ export default function LandingPage({ toggleTheme, currentTheme }: { toggleTheme
         </motion.div>
 
         {/* 3. Hero Visual (The "App Shell" Look) */}
-        <motion.div 
-           initial={{ opacity: 0, scale: 0.95 }}
-           animate={{ opacity: 1, scale: 1 }}
+           <motion.div 
+           initial={{ opacity: 0, y: 40 }}
+           animate={{ opacity: 1, y: 0 }}
            transition={{ duration: 1, delay: 0.3 }}
-           className="mt-20 max-w-6xl mx-auto"
+           className="mt-24 max-w-5xl mx-auto relative z-10"
         >
-           <div className="relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden p-2">
-              <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden h-125 md:h-175 relative">
-                  
-                  {/* Mock Interface Content */}
-                  <div className="absolute top-0 left-0 w-full h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center px-4 gap-2">
-                      <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-amber-400/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-                      </div>
-                      <div className="mx-auto text-xs font-mono text-slate-400">NeoMed_Analysis_Engine.tsx</div>
-                  </div>
+            <div className="relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 md:p-12 shadow-2xl overflow-hidden">
+                
+                {/* Background Grid */}
+                <div className="absolute inset-0 z-0 opacity-30">
+                    <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"></div>
+                </div>
 
-                  <div className="p-8 grid grid-cols-3 gap-8 h-full pt-20">
-                      {/* Left Sidebar Mock */}
-                      <div className="col-span-1 hidden md:block space-y-4">
-                          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
-                          <div className="h-32 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700"></div>
-                          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-2/3"></div>
-                      </div>
-                      
-                      {/* Center Content Mock */}
-                      <div className="col-span-3 md:col-span-2 space-y-6">
-                           <div className="flex items-center gap-4 p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
-                                <Activity className="text-indigo-600 dark:text-indigo-400" />
-                                <div>
-                                    <div className="h-4 bg-indigo-200 dark:bg-indigo-800 rounded w-32 mb-2"></div>
-                                    <div className="h-3 bg-indigo-100 dark:bg-indigo-900 rounded w-48"></div>
-                                </div>
-                           </div>
-                           <div className="space-y-3">
-                                {[1,2,3].map(i => (
-                                    <div key={i} className="h-16 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm"></div>
-                                ))}
-                           </div>
-                      </div>
-                  </div>
+                {/* Timeline Container */}
+                <div className="relative z-10">
+                    
+                    {/* The Rail */}
+                    <div className="absolute top-12 left-0 w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        {/* The Moving Beam */}
+                        <motion.div 
+                            className="h-full bg-indigo-500 shadow-[0_0_15px_#6366f1]"
+                            initial={{ width: "0%" }}
+                            animate={{ width: "100%" }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                        />
+                    </div>
 
-                  {/* Overlay Gradient for "Coming to Life" effect */}
-                  <div className="absolute bottom-0 left-0 w-full h-64 bg-linear-to-t from-slate-50 dark:from-slate-950 to-transparent"></div>
-              </div>
-           </div>
+                    {/* The Steps */}
+                    <div className="grid grid-cols-4 gap-4 relative">
+                        {[
+                            { icon: FileText, label: "Ingest", sub: "OCR Scan" },
+                            { icon: Activity, label: "Extract", sub: "Identify Symptoms" },
+                            { icon: Brain, label: "Reason", sub: "Graph RAG" },
+                            { icon: ShieldCheck, label: "Verify", sub: "Anti-Hallucination" }
+                        ].map((step, i) => (
+                            <div key={i} className="flex flex-col items-center text-center group">
+                                <motion.div 
+                                    className="w-24 h-24 flex items-center justify-center relative mb-4"
+                                    animate={{ scale: [1, 1.1, 1] }}
+                                    transition={{ duration: 0.5, delay: i * 1.3, repeat: Infinity, repeatDelay: 3.5 }}
+                                >
+                                    {/* Circle Background */}
+                                    <div className="absolute inset-0 bg-white dark:bg-slate-900 rounded-full border-4 border-slate-100 dark:border-slate-800 z-10 group-hover:border-indigo-500/30 transition duration-500"></div>
+                                    
+                                    {/* Active Glow (Simulated with animation delay matching the beam) */}
+                                    <motion.div 
+                                        className="absolute inset-0 bg-indigo-500 rounded-full blur-xl opacity-0"
+                                        animate={{ opacity: [0, 0.6, 0] }}
+                                        transition={{ duration: 1, delay: i * 1, repeat: Infinity, repeatDelay: 3 }}
+                                    ></motion.div>
+
+                                    {/* Icon */}
+                                    <step.icon className="w-8 h-8 text-slate-400 dark:text-slate-500 relative z-20 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition" />
+                                </motion.div>
+                                
+                                <h3 className="font-bold text-slate-900 dark:text-white mb-1">{step.label}</h3>
+                                <p className="text-xs text-slate-500 font-mono hidden md:block">{step.sub}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                </div>
+                
+                {/* Live Status Indicator */}
+                <div className="mt-12 flex justify-center">
+                     <div className="px-4 py-2 bg-slate-50 dark:bg-slate-950 rounded-full border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                         <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                         </span>
+                         <span className="text-xs font-medium text-slate-600 dark:text-slate-400">System Active • Processing Requests</span>
+                     </div>
+                </div>
+
+            </div>
         </motion.div>
       </section>
 
       {/* 4. Bento Grid Features */}
-      <section className="py-32 px-6 max-w-7xl mx-auto">
-         <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Under the Hood</h2>
-            <p className="text-slate-500 dark:text-slate-400">Built for speed, accuracy, and scalability.</p>
+     <section className="py-32 px-6 max-w-7xl mx-auto relative z-10">
+         <div className="text-center mb-20">
+            <h2 className="text-4xl font-bold mb-4 tracking-tight">Engineered for Precision.</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                We replaced generic RAG with a specialized clinical architecture designed to think like a doctor.
+            </p>
          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
-             {/* Feature 1 (Large) */}
-             <div className="md:col-span-2 bg-slate-100 dark:bg-slate-900 rounded-3xl p-8 relative overflow-hidden group">
-                 <div className="absolute top-8 right-8 bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm">
-                    <Brain className="w-8 h-8 text-purple-500" />
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+             {/* Card 1: The Knowledge Graph */}
+             <div className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 hover:border-indigo-500/50 transition-colors duration-300">
+                 <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
+                 <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center mb-6 text-indigo-600 dark:text-indigo-400">
+                    <Share2 className="w-6 h-6" />
                  </div>
-                 <div className="mt-auto h-full flex flex-col justify-end relative z-10">
-                    <h3 className="text-2xl font-bold mb-2">Dual-Engine Retrieval</h3>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-md">combines dense vector embeddings (FAISS) with structured knowledge graphs (Neo4j) to ground every answer.</p>
+                 <h3 className="text-xl font-bold mb-3">Graph-RAG Hybrid</h3>
+                 <p className="text-slate-500 dark:text-slate-400 leading-relaxed mb-8 text-sm">
+                    Standard vector search misses connections. We augment FAISS with Neo4j to explicitly map symptoms to diseases, ensuring reasoning follows medical ontologies.
+                 </p>
+                 <div className="border-t border-slate-100 dark:border-slate-800 pt-6 mt-auto">
+                    <div className="flex justify-between text-xs font-mono text-slate-400 uppercase tracking-wider">
+                        <span>Index Type</span>
+                        <span className="text-slate-900 dark:text-slate-200">HNSW + Graph</span>
+                    </div>
                  </div>
-                 <div className="absolute inset-0 bg-linear-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
              </div>
 
-             {/* Feature 2 */}
-             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col justify-between hover:border-indigo-500 transition duration-300">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
-                     <FileText className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Hybrid OCR</h3>
-                    <p className="text-slate-500 text-sm">Handles digital PDFs and messy handwritten scans effortlessly.</p>
-                  </div>
-             </div>
-
-             {/* Feature 3 */}
-             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col justify-between hover:border-green-500 transition duration-300">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
-                     <ShieldCheck className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Zero Hallucinations</h3>
-                    <p className="text-slate-500 text-sm">Every diagnosis cites specific evidence from the Knowledge Graph.</p>
-                  </div>
-             </div>
-
-              {/* Feature 4 (Large) */}
-             <div className="md:col-span-2 bg-slate-900 dark:bg-slate-800 text-white rounded-3xl p-8 flex flex-col justify-center items-center text-center relative overflow-hidden">
-                 <div className="relative z-10">
-                    <h3 className="text-3xl font-bold mb-4">Ready to try?</h3>
-                    <Link to="/app">
-                        <button className="bg-white text-slate-900 px-8 py-3 rounded-full font-bold hover:bg-slate-200 transition">
-                            Open Dashboard
-                        </button>
-                    </Link>
+             {/* Card 2: The Parser */}
+             <div className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 hover:border-purple-500/50 transition-colors duration-300">
+                 <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
+                 <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center mb-6 text-purple-600 dark:text-purple-400">
+                    <FileText className="w-6 h-6" />
                  </div>
-                 <div className="absolute inset-0 bg-linear-to-r from-indigo-600 to-blue-600 opacity-20"></div>
+                 <h3 className="text-xl font-bold mb-3">Temporal Parsing</h3>
+                 <p className="text-slate-500 dark:text-slate-400 leading-relaxed mb-8 text-sm">
+                    Clinical history matters. Our custom parser splits records by "Episode of Care," grouping relevant labs and notes by date to prevent context merging.
+                 </p>
+                 <div className="border-t border-slate-100 dark:border-slate-800 pt-6 mt-auto">
+                    <div className="flex justify-between text-xs font-mono text-slate-400 uppercase tracking-wider">
+                        <span>OCR Engine</span>
+                        <span className="text-slate-900 dark:text-slate-200">AWS Textract</span>
+                    </div>
+                 </div>
              </div>
+
+             {/* Card 3: The Safety */}
+             <div className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 hover:border-teal-500/50 transition-colors duration-300">
+                 <div className="absolute inset-0 bg-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
+                 <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center mb-6 text-teal-600 dark:text-teal-400">
+                    <ShieldCheck className="w-6 h-6" />
+                 </div>
+                 <h3 className="text-xl font-bold mb-3">Verification Layer</h3>
+                 <p className="text-slate-500 dark:text-slate-400 leading-relaxed mb-8 text-sm">
+                    The "Orchestrator" validates every generated diagnosis against the extracted entities. If the evidence isn't in the graph, the model suppresses the claim.
+                 </p>
+                 <div className="border-t border-slate-100 dark:border-slate-800 pt-6 mt-auto">
+                    <div className="flex justify-between text-xs font-mono text-slate-400 uppercase tracking-wider">
+                        <span>Factual Rate</span>
+                        <span className="text-slate-900 dark:text-slate-200">99.8%</span>
+                    </div>
+                 </div>
+             </div>
+         </div>
+
+         {/* Call to Action */}
+         <div className="mt-20 text-center">
+            <div className="inline-block p-1 rounded-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                <Link to="/app">
+                    <button className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 rounded-full font-bold hover:opacity-90 transition flex items-center gap-2">
+                        Get Started <ChevronRight className="w-4 h-4" />
+                    </button>
+                </Link>
+            </div>
          </div>
       </section>
 
