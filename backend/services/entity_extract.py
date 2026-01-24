@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 import os
 import requests
 from dotenv import load_dotenv
+from huggingface_hub import InferenceClient
 
 load_dotenv()
 
@@ -19,22 +20,42 @@ ALLOWED_LABELS = {
     "DURATION"
 }
 
-HF_API_URL = "https://api-inference.huggingface.co/models/blaze999/Medical-NER"
 HF_TOKEN = os.getenv("HF_TOKEN")
+client = InferenceClient(model="blaze999/Medical-NER", token=HF_TOKEN)
+
+
+HF_API_URL = "https://router.huggingface.co/models/blaze999/Medical-NER"
 
 if not HF_TOKEN:
     raise ValueError("HF_TOKEN not found in environment variables")
 
 def call_hf_api(text: str) -> List[Dict[str, Any]]:
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    payload = {"inputs": text}
-    
-    response = requests.post(HF_API_URL, headers=headers, json=payload)
-    
-    if response.status_code != 200:
-        raise Exception(f"HF API Error: {response.status_code} - {response.text}")
-    
-    return response.json()
+    # 2. Use the client instead of manual requests
+    try:
+        # token_classification is the task for NER
+        response = client.token_classification(text)
+        
+        return [
+            {
+                "entity_group": item.entity_group,
+                "score": item.score,
+                "word": item.word,
+                "start": item.start,
+                "end": item.end
+            } 
+            for item in response
+        ]
+        
+    except Exception as e:
+       
+        print(f"⚠️ SDK Failed, retrying manual: {e}")
+        API_URL = "https://api-inference.huggingface.co/models/blaze999/Medical-NER"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        r = requests.post(API_URL, headers=headers, json={"inputs": text})
+        
+        if r.status_code != 200:
+             raise Exception(f"HF API Error: {r.status_code} - {r.text}")
+        return r.json()
 
 def context_similarity(ctx1: str, ctx2: str) -> float:
     words1 = set(ctx1.lower().split())
