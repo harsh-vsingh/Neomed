@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 import os
 import requests
 from dotenv import load_dotenv
@@ -23,16 +23,13 @@ ALLOWED_LABELS = {
 HF_TOKEN = os.getenv("HF_TOKEN")
 client = InferenceClient(model="blaze999/Medical-NER", token=HF_TOKEN)
 
-
 HF_API_URL = "https://router.huggingface.co/models/blaze999/Medical-NER"
 
 if not HF_TOKEN:
     raise ValueError("HF_TOKEN not found in environment variables")
 
 def call_hf_api(text: str) -> List[Dict[str, Any]]:
-    # 2. Use the client instead of manual requests
     try:
-        # token_classification is the task for NER
         response = client.token_classification(text)
         
         return [
@@ -47,7 +44,6 @@ def call_hf_api(text: str) -> List[Dict[str, Any]]:
         ]
         
     except Exception as e:
-       
         print(f"⚠️ SDK Failed, retrying manual: {e}")
         API_URL = "https://api-inference.huggingface.co/models/blaze999/Medical-NER"
         headers = {"Authorization": f"Bearer {HF_TOKEN}"}
@@ -71,7 +67,8 @@ def context_similarity(ctx1: str, ctx2: str) -> float:
 
 def extract_medical_entities(text: str, context_window: int = 5, 
                             confidence_threshold: float = 0.5, 
-                            similarity_threshold: float = 0.8) -> List[Dict[str, Any]]:
+                            similarity_threshold: float = 0.8,
+                            citation_counter: int = 1) -> Tuple[List[Dict[str, Any]], int]:
     raw_entities = call_hf_api(text)
     
     words = text.split()
@@ -105,7 +102,11 @@ def extract_medical_entities(text: str, context_window: int = 5,
             "text": ent["word"].strip(),
             "label": ent["entity_group"],
             "confidence": float(ent["score"]),
-            "context": " ".join(context_words)
+            "context": " ".join(context_words),
+            "context_window_start": context_start,
+            "context_window_end": context_end - 1,
+            "entity_word_start": start_word_idx,
+            "entity_word_end": end_word_idx
         })
     
     grouped_entities = []
@@ -116,8 +117,11 @@ def extract_medical_entities(text: str, context_window: int = 5,
             continue
         
         group = {
+            "citation_id": citation_counter,
             "entities": [{"text": ent["text"], "label": ent["label"], "confidence": ent["confidence"]}],
-            "context": ent["context"]
+            "context": ent["context"],
+            "context_window_start": ent["context_window_start"],
+            "context_window_end": ent["context_window_end"]
         }
         
         for j in range(i + 1, len(entities)):
@@ -135,32 +139,47 @@ def extract_medical_entities(text: str, context_window: int = 5,
                 used_indices.add(j)
         
         grouped_entities.append(group)
+        citation_counter += 1
     
-    return grouped_entities
+    return grouped_entities, citation_counter
 
 def process_date_chunks(chunks: List[Dict[str, str]], 
                        context_window: int = 5,
                        confidence_threshold: float = 0.5,
-                       similarity_threshold: float = 0.8) -> List[Dict[str, Any]]:
+                       similarity_threshold: float = 0.8) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     results = []
+    citation_map = {}
+    citation_counter = 1
     
-    for chunk in chunks:
+    for chunk_idx, chunk in enumerate(chunks):
         date = chunk.get("date", "N/A")
         text = chunk.get("text", "")
         
         if not text.strip():
             continue
         
-        entities = extract_medical_entities(
+        entities, citation_counter = extract_medical_entities(
             text,
             context_window,
             confidence_threshold,
-            similarity_threshold
+            similarity_threshold,
+            citation_counter
         )
+        
+        for entity_group in entities:
+            citation_id = str(entity_group["citation_id"])
+            citation_map[citation_id] = {
+                "date": date,
+                "context": entity_group["context"],
+                "context_window_start": entity_group["context_window_start"],
+                "context_window_end": entity_group["context_window_end"],
+                "entities": entity_group["entities"],
+                "source_chunk_index": chunk_idx
+            }
         
         results.append({
             "date": date,
             "entities": entities
         })
     
-    return results
+    return results, citation_map
