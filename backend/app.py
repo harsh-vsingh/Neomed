@@ -64,10 +64,13 @@ async def analyze_text(request: NoteRequest):
         detected_symptoms = []
         try:
             full_text_entities, _ = extract_medical_entities(request.text)
-            detected_symptoms = list(set([
-                e['text'] for group in full_text_entities for e in group['entities']
-                if e['label'] == 'SIGN_SYMPTOM'
-            ]))
+            for group in full_text_entities:
+                for entity in group.get("entities", []):
+                    # Check label (Mapped from 'entity_group' in service)
+                    if entity.get("label") == "SIGN_SYMPTOM":
+                        detected_symptoms.append(entity.get("text"))
+            
+            detected_symptoms = list(set(detected_symptoms))
             print(f"🔍 Detected Symptoms: {detected_symptoms}")
         except Exception as e:
             print(f"NER Error: {e}")
@@ -157,10 +160,12 @@ async def analyze_file(file: UploadFile = File(...)):
         detected_symptoms = []
         try:
             full_text_entities, _ = extract_medical_entities(full_text)
-            detected_symptoms = list(set([
-                e['text'] for group in full_text_entities for e in group['entities']
-                if e['label'] == 'SIGN_SYMPTOM'
-            ]))
+            for group in full_text_entities:
+                for entity in group.get("entities", []):
+                    if entity.get("label") == "SIGN_SYMPTOM":
+                        detected_symptoms.append(entity.get("text"))
+            
+            detected_symptoms = list(set(detected_symptoms))
         except Exception as e:
             print(f"NER Error: {e}")
             warnings.append("Medical Entity Extraction is unavailable.")

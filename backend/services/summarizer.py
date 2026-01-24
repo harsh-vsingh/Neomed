@@ -15,7 +15,7 @@ if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     temperature=0,
     google_api_key=GEMINI_API_KEY
 )
@@ -60,7 +60,7 @@ CRITICAL CITATION RULES:
 5. Demographics (age, sex) MUST have citations if they appear in entities
 6. For medications:
    - Do NOT put citations in "name" or "dosage" text
-   - ONLY use the "citations" field: {"name": "Lisinopril", "citations": "[3]"}
+   - ONLY use the "citations" field: {{"name": "Lisinopril", "citations": "[3]"}}
 7. For empty fields: Use [] or omit field. Do NOT write "None noted" or "Not mentioned"
 8. Use details from both entity text AND context when relevant
 9. List conditions separately unless they share the same citation ID
@@ -74,17 +74,7 @@ VALIDATION CHECKLIST:
 - Medications use "citations" field only?
 
 OUTPUT FORMAT:
-{{
-  "patient_demographics": {{"age": "string", "sex": "string"}},
-  "chief_complaint": "string with [citation]",
-  "history_of_present_illness": "string with [citations]",
-  "past_medical_history": ["string with [citation]", ...],
-  "medications": [{{"name": "string", "dosage": "string", "citations": "[N]"}}, ...],
-  "procedures": ["string with [citation]", ...],
-  "diagnostic_findings": ["string with [citation]", ...],
-  "assessment": "string with [citations]",
-  "clinical_course": "string with [citations]"
-}}
+Generate a valid JSON object matching the example below.
 
 EXAMPLE OUTPUT FORMAT:
 {example}
@@ -108,61 +98,72 @@ def format_entities_for_prompt(timeline: List[Dict[str, Any]]) -> str:
         formatted_lines.append(f"\nDate: {date}")
         
         for entity_group in date_chunk["entities"]:
-            citation_id = entity_group["citation_id"]
-            entities_text = ", ".join([
-                f"{e['text']} ({e['label']})" 
-                for e in entity_group["entities"]
-            ])
-            context = entity_group["context"]
-            
-            formatted_lines.append(f"[{citation_id}] Entities: {entities_text}")
-            formatted_lines.append(f"    Context: {context}")
-    
+             # If entity_group is a list (nested structure), iterate through it
+            if isinstance(entity_group, list):
+                 pass 
+            # If it's a dict (expected GroupedEntity structure from updated format)
+            elif isinstance(entity_group, dict):
+                 # Handle the 'entities' list inside the group
+                 # Note: in updated entity_extract, key is 'citation_id' (single int), not 'citation_ids' list
+                 citation_id = entity_group.get("citation_id")
+                 citation_str = f" [{citation_id}]" if citation_id else ""
+                 
+                 # Get entity texts
+                 texts = [e.get("text", "") for e in entity_group.get("entities", [])]
+                 texts_str = ", ".join(texts)
+                 
+                 context = entity_group.get("context", "")
+                 
+                 formatted_lines.append(f"- {texts_str}{citation_str} (Context: {context})")
+
     return "\n".join(formatted_lines)
 
-def extract_citations_from_summary(summary: Dict[str, Any]) -> set:
-    citation_pattern = r'\[(\d+)\]'
-    all_text = json.dumps(summary)
-    citations = re.findall(citation_pattern, all_text)
-    return set(citations)
-
 def validate_citations(summary: Dict[str, Any], citation_map: Dict[str, Any]) -> Dict[str, Any]:
-    summary_citations = extract_citations_from_summary(summary)
-    available_citations = set(citation_map.keys())
+    used_citations = set()
+    citation_pattern = re.compile(r'\[(\d+)\]')
     
-    invalid_citations = summary_citations - available_citations
-    uncited_entities = available_citations - summary_citations
+    def extract_from_value(value):
+        if isinstance(value, str):
+            matches = citation_pattern.findall(value)
+            used_citations.update(map(str, matches))
+        elif isinstance(value, list):
+            for item in value:
+                extract_from_value(item)
+        elif isinstance(value, dict):
+             if "citations" in value:
+                 extract_from_value(value["citations"])
+             for k, v in value.items():
+                 extract_from_value(v)
+
+    extract_from_value(summary)
     
-    coverage = (len(summary_citations) / len(available_citations) * 100) if available_citations else 0
+    available_citations = set(map(str, citation_map.keys()))
+    invalid_citations = used_citations - available_citations
     
-    validation_result = {
-        "valid": len(invalid_citations) == 0 and len(uncited_entities) == 0,
+    return {
+        "valid": len(invalid_citations) == 0,
         "invalid_citations": list(invalid_citations),
-        "uncited_entities": list(uncited_entities),
         "citation_coverage": {
             "total_available": len(available_citations),
-            "total_cited": len(summary_citations),
-            "coverage_percent": round(coverage, 2)
+            "used": len(used_citations),
+            "coverage_percent": round(len(used_citations) / len(available_citations) * 100, 1) if available_citations else 0
         }
     }
-    
-    if invalid_citations:
-        print(f"⚠️ Warning: Invalid citations found: {invalid_citations}")
-    if uncited_entities:
-        print(f"⚠️ Warning: Uncited entities: {uncited_entities}")
-    
-    return validation_result
 
-def generate_medical_summary(timeline_with_entities: List[Dict[str, Any]], 
-                            citation_map: Dict[str, Any]) -> Dict[str, Any]:
-    
-    entities_formatted = format_entities_for_prompt(timeline_with_entities)
-    example_text = json.dumps(EXAMPLE_SUMMARY, indent=2)
-    
+def generate_medical_summary(timeline_with_entities, citation_map: Dict[str, Any]) -> Dict[str, Any]:
     try:
+        # Debugging: Print the Citation Map
+        print("\n--- DEBUG: Citation Map ---")
+        print(json.dumps(citation_map, indent=2, default=str)) # default=str to handle non-serializable objects
+        print("---------------------------\n")
+
+        entities_text = format_entities_for_prompt(timeline_with_entities)
+        
+        example_json = json.dumps(EXAMPLE_SUMMARY, indent=2)
+        
         result = chain.invoke({
-            "example": example_text,
-            "entities": entities_formatted
+            "entities": entities_text,
+            "example": example_json
         })
         
         validation = validate_citations(result, citation_map)
@@ -171,6 +172,7 @@ def generate_medical_summary(timeline_with_entities: List[Dict[str, Any]],
             "summary": result,
             "validation": validation
         }
-    
+        
     except Exception as e:
-        raise ValueError(f"Error generating summary: {e}")
+        print(f"Error generating summary: {e}")
+        raise e

@@ -5,7 +5,6 @@ data/*.jsonl
 data/*.parquet
 tests/
 .env
-service/__pycache__/
-utils/__pycache__/
-__pycache__/
 
+__pycache__/
+services/__pycache__/
