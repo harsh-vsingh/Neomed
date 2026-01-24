@@ -54,6 +54,7 @@ def call_hf_api(text: str) -> List[Dict[str, Any]]:
         return r.json()
 
 def context_similarity(ctx1: str, ctx2: str) -> float:
+    """Calculate Jaccard similarity between two context strings"""
     words1 = set(ctx1.lower().split())
     words2 = set(ctx2.lower().split())
     
@@ -124,9 +125,15 @@ def extract_medical_entities(text: str, context_window: int = 5,
             "context_window_end": ent["context_window_end"]
         }
         
+        entities_in_group = 1  # Already added the base entity
+        
         for j in range(i + 1, len(entities)):
             if j in used_indices:
                 continue
+            
+            # Stop if we already have 3 entities in this group
+            if entities_in_group >= 3:
+                break
             
             similarity = context_similarity(ent["context"], entities[j]["context"])
             
@@ -137,6 +144,7 @@ def extract_medical_entities(text: str, context_window: int = 5,
                     "confidence": entities[j]["confidence"]
                 })
                 used_indices.add(j)
+                entities_in_group += 1
         
         grouped_entities.append(group)
         citation_counter += 1
@@ -144,8 +152,8 @@ def extract_medical_entities(text: str, context_window: int = 5,
     return grouped_entities, citation_counter
 
 def process_date_chunks(chunks: List[Dict[str, str]], 
-                       context_window: int = 5,
-                       confidence_threshold: float = 0.5,
+                       context_window: int = 4,
+                       confidence_threshold: float = 0.6,
                        similarity_threshold: float = 0.8) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     results = []
     citation_map = {}
