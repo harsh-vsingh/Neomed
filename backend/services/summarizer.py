@@ -22,64 +22,59 @@ llm = ChatGoogleGenerativeAI(
 
 EXAMPLE_SUMMARY = {
     "patient_demographics": {
-        "age": "74y",
-        "sex": "female"
+        "age": "74 years [1]",
+        "sex": "female [1]"
     },
-    "chief_complaint": "Abdominal pain [1]",
-    "history_of_present_illness": "74-year-old female with type 2 diabetes mellitus [2] and recent stroke [3] presented with 2 days of abdominal pain [1]",
+    "chief_complaint": "Abdominal pain [2]",
+    "history_of_present_illness": "74-year-old female [1] with type 2 diabetes mellitus [3] presented with 2 days of abdominal pain [2].",
     "past_medical_history": [
-        "Colon cancer diagnosed 2554, treated with hemicolectomy, XRT, chemotherapy [4]",
-        "Type II Diabetes Mellitus [2]",
-        "Hypertension [5]"
+        "Type 2 diabetes mellitus [3]",
+        "Hypertension [4]"
     ],
     "medications": [
-        {"name": "Miconazole Nitrate", "dosage": "2% Powder topical BID", "citations": "[6]"},
-        {"name": "Heparin Sodium", "dosage": "5,000 unit/mL TID", "citations": "[7]"},
-        {"name": "Acetaminophen", "dosage": "160 mg/5 mL Q4-6H PRN", "citations": "[8]"}
+        {"name": "Lisinopril", "dosage": "10mg daily", "citations": "[5]"},
+        {"name": "Metformin", "dosage": "500mg twice daily", "citations": "[6]"}
     ],
     "procedures": [
-        "PICC line insertion [9]",
-        "ERCP with sphincterotomy [10]"
+        "ERCP with sphincterotomy [7]"
     ],
     "diagnostic_findings": [
-        "Ultrasound showed pancreatic duct dilation [11]",
-        "Edematous gallbladder [11]"
+        "Ultrasound showed pancreatic duct dilation [8]"
     ],
-    "assessment": "Pancreatitis with complications [1][11]",
-    "clinical_course": "Patient admitted to ICU [12]. Underwent ERCP with sphincterotomy [10]. Clinical improvement noted [13]"
+    "assessment": "Acute pancreatitis [9]",
+    "clinical_course": "Patient admitted to ICU [10]. Underwent ERCP [7]. Clinical improvement noted [11]."
 }
 
 prompt_template = ChatPromptTemplate.from_messages([
     ("system", """You are a medical documentation specialist. Generate a comprehensive medical summary using ONLY the provided entities.
 
-CRITICAL CITATION RULES:
-1. ONLY use citation IDs that appear in the input ([1], [2], [3], etc.)
-2. Do NOT invent or skip citation numbers
-3. Place citations at the end of EACH individual claim
-4. For multi-fact sentences, cite each fact separately: "Hypertension [2] and diabetes [5]"
-5. Demographics (age, sex) MUST have citations if they appear in entities
-6. For medications:
-   - Do NOT put citations in "name" or "dosage" text
-   - ONLY use the "citations" field: {{"name": "Lisinopril", "citations": "[3]"}}
-7. For empty fields: Use [] or omit field. Do NOT write "None noted" or "Not mentioned"
-8. Use details from both entity text AND context when relevant
-9. List conditions separately unless they share the same citation ID
-10. For multi-sentence fields (clinical_course), cite after each sentence
+CITATION RULES:
+1. Each fact gets EXACTLY ONE citation: "Hypertension [2]"
+2. Do NOT use multiple citations for one fact: WRONG → "Pancreatitis [1][11]"
+3. Only use citation numbers from the input ([1], [2], [3], etc.)
+4. Do NOT invent citation numbers
+5. Place citation at the end of each claim or sentence
+6. List each condition separately with its own citation:
+   - CORRECT: ["Hypertension [2]", "Diabetes [3]"]
+   - WRONG: ["Hypertension and diabetes [2][3]"]
 
-VALIDATION CHECKLIST:
-- Every fact has a citation?
-- All citation numbers exist in input?
-- No made-up information?
-- Demographics cited?
-- Medications use "citations" field only?
+MEDICATION RULES:
+- One citation per medication (covers both name and dosage)
+- Put citation ONLY in "citations" field
+- CORRECT: {{"name": "Lisinopril", "dosage": "10mg daily", "citations": "[5]"}}
+- WRONG: {{"name": "Lisinopril [5]", "dosage": "10mg daily [5]", "citations": "[5]"}}
+
+GENERAL RULES:
+- Cite demographics if present: {{"age": "74y [1]", "sex": "female [1]"}}
+- For empty fields use [], do NOT write "None noted"
+- Use medical terminology from entities
+- Add context details when clinically relevant (e.g., "severe", "radiating")
+- Do NOT add interpretations not in source
 
 OUTPUT FORMAT:
-Generate a valid JSON object matching the example below.
-
-EXAMPLE OUTPUT FORMAT:
 {example}
 
-Remember: EVERY fact must have a citation. Use only the citation IDs provided in the input."""),
+Remember: Every fact needs EXACTLY ONE citation."""),
     ("human", """Input Entities with Citation IDs:
 
 {entities}
