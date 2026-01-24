@@ -20,92 +20,29 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=GEMINI_API_KEY
 )
 
-JSON_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "patient_demographics": {
-            "type": "object",
-            "properties": {
-                "age": {"type": "string", "description": "Age with citation [N]"},
-                "sex": {"type": "string", "description": "Sex with citation [N]"}
-            }
-        },
-        "chief_complaint": {"type": "string", "description": "Primary complaint with citation [N]"},
-        "history_of_present_illness": {"type": "string", "description": "HPI narrative with citations after each sentence"},
-        "past_medical_history": {
-            "type": "array",
-            "items": {"type": "string", "description": "Each condition with citation [N]"}
-        },
-        "medications": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "dosage": {"type": "string"},
-                    "citations": {"type": "string", "pattern": "^\\[\\d+\\]$"}
-                },
-                "required": ["name", "dosage", "citations"]
-            }
-        },
-        "allergies": {
-            "type": "array",
-            "items": {"type": "string", "description": "Each allergy with citation [N]"}
-        },
-        "family_history": {
-            "type": "array",
-            "items": {"type": "string", "description": "Each condition with citation [N]"}
-        },
-        "social_history": {"type": "string", "description": "Social habits with citations [N]"},
-        "procedures": {
-            "type": "array",
-            "items": {"type": "string", "description": "Each procedure with citation [N]"}
-        },
-        "diagnostic_findings": {
-            "type": "array",
-            "items": {"type": "string", "description": "Each finding with citation [N]"}
-        },
-        "physical_examination": {"type": "string", "description": "Physical exam findings with citations [N]"},
-        "assessment": {"type": "string", "description": "Clinical diagnosis with citation [N]"},
-        "plan": {"type": "string", "description": "Treatment plan with citations [N]"},
-        "clinical_course": {"type": "string", "description": "Hospital course with citations after each sentence"}
-    }
-}
-
 EXAMPLE_SUMMARY = {
     "patient_demographics": {
         "age": "74 years [1]",
         "sex": "female [1]"
     },
     "chief_complaint": "Abdominal pain [2]",
-    "history_of_present_illness": "74-year-old female [1] with type 2 diabetes mellitus [3] presented with 2 days of severe abdominal pain [2]. Pain is constant and radiating to back [2].",
+    "history_of_present_illness": "74-year-old female [1] with type 2 diabetes mellitus [3] presented with 2 days of abdominal pain [2].",
     "past_medical_history": [
         "Type 2 diabetes mellitus [3]",
-        "Hypertension [4]",
-        "Hyperlipidemia [5]"
+        "Hypertension [4]"
     ],
     "medications": [
-        {"name": "Lisinopril", "dosage": "10mg daily", "citations": "[6]"},
-        {"name": "Metformin", "dosage": "500mg twice daily", "citations": "[7]"}
+        {"name": "Lisinopril", "dosage": "10mg daily", "citations": "[5]"},
+        {"name": "Metformin", "dosage": "500mg twice daily", "citations": "[6]"}
     ],
-    "allergies": [
-        "Penicillin [8]"
-    ],
-    "family_history": [
-        "Father with coronary artery disease [9]"
-    ],
-    "social_history": "Former smoker, quit 10 years ago [10]. Denies alcohol use [10].",
     "procedures": [
-        "ERCP with sphincterotomy [11]"
+        "ERCP with sphincterotomy [7]"
     ],
     "diagnostic_findings": [
-        "Ultrasound showed pancreatic duct dilation [12]",
-        "Elevated lipase 450 U/L [13]"
+        "Ultrasound showed pancreatic duct dilation [8]"
     ],
-    "physical_examination": "Abdomen tender in epigastric region [14]. No rebound tenderness [14].",
-    "assessment": "Acute pancreatitis [15]",
-    "plan": "NPO, IV hydration, pain management [16]. Repeat lipase in 24 hours [16].",
-    "clinical_course": "Patient admitted to ICU [17]. Underwent ERCP with sphincterotomy [11]. Clinical improvement noted on day 3 [18]."
+    "assessment": "Acute pancreatitis [9]",
+    "clinical_course": "Patient admitted to ICU [10]. Underwent ERCP [7]. Clinical improvement noted [11]."
 }
 
 prompt_template = ChatPromptTemplate.from_messages([
@@ -133,20 +70,16 @@ GENERAL RULES:
 - Use medical terminology from entities
 - Add context details when clinically relevant (e.g., "severe", "radiating")
 - Do NOT add interpretations not in source
-- Only include fields that have entities in the input
 
-You MUST follow this JSON schema exactly:
-{json_schema}
-
-OUTPUT FORMAT EXAMPLE:
+OUTPUT FORMAT:
 {example}
 
-Remember: Every fact needs EXACTLY ONE citation. Follow the JSON schema structure."""),
+Remember: Every fact needs EXACTLY ONE citation."""),
     ("human", """Input Entities with Citation IDs:
 
 {entities}
 
-Generate the medical summary with proper citations following the JSON schema.""")
+Generate the medical summary with proper citations.""")
 ])
 
 output_parser = JsonOutputParser()
@@ -165,7 +98,7 @@ def format_entities_for_prompt(timeline: List[Dict[str, Any]]) -> str:
                  pass 
             # If it's a dict (expected GroupedEntity structure from updated format)
             elif isinstance(entity_group, dict):
-                 # Handle the 'entities' list inside the group
+                 # Handle the 'entities' list inside the groupth 
                  # Note: in updated entity_extract, key is 'citation_id' (single int), not 'citation_ids' list
                  citation_id = entity_group.get("citation_id")
                  citation_str = f" [{citation_id}]" if citation_id else ""
@@ -222,12 +155,10 @@ def generate_medical_summary(timeline_with_entities, citation_map: Dict[str, Any
         entities_text = format_entities_for_prompt(timeline_with_entities)
         
         example_json = json.dumps(EXAMPLE_SUMMARY, indent=2)
-        schema_json = json.dumps(JSON_SCHEMA, indent=2)
-
+        
         result = chain.invoke({
             "entities": entities_text,
-            "example": example_json,
-            "json_schema": schema_json
+            "example": example_json
         })
         
         validation = validate_citations(result, citation_map)
