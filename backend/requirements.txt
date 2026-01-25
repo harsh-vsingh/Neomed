@@ -8,13 +8,12 @@ python-multipart==0.0.20
 pandas==2.2.3
 numpy==2.2.1
 
-# NLP & Embeddings
+# NLP & Embeddings (Use CPU versions for cloud to save space/RAM)
 sentence-transformers==3.3.1
 transformers==4.47.1
-# torch==2.5.1
+# torch==2.5.1 -- Let transformers install its own torch dependency
 torchvision
 torchaudio
-
 
 # Vector Database
 faiss-cpu
@@ -24,24 +23,21 @@ neo4j==5.27.0
 py2neo==2021.2.4
 
 # LLM Integration
-groq==0.13.0
+
 openai==1.57.4
+google-generativeai # For Gemini
+langchain-google-genai
 
 # Utilities
 python-dotenv==1.0.1
 requests==2.32.3
 tqdm==4.67.1
 
-# Optional but recommended
+# Document Parsers
 langchain==0.3.13
 langchain-community==0.3.13
 pypdf==3.17.4
-<<<<<<< HEAD
 pytesseract==0.3.10
-=======
-pytesseract==0.3.10
-Pillow==10.2.0
-
 langchain-text-splitters==0.0.1
 boto3
->>>>>>> c151753db7c109f8f1f2e68cf39172e1a2dfd680
+google-cloud-vision # Added for your recent change
