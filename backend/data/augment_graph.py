@@ -64,6 +64,24 @@ class GraphAugmenter:
     # Renal
     {"disease": "Acute Kidney Injury", "symptoms": ["decreased urine output", "edema", "fatigue", "confusion", "nausea"]},
     {"disease": "Nephrolithiasis", "symptoms": ["flank pain", "abdominal pain", "nausea", "vomiting", "hematuria"]},
+
+    {"disease": "Acute Otitis Media", "symptoms": ["ear pain", "hearing loss", "fever", "fussiness", "balance problems"]},
+    {"disease": "Acute Sinusitis", "symptoms": ["facial pain", "nasal congestion", "runny nose", "headache", "tooth pain", "loss of smell"]},
+    {"disease": "Infectious Mononucleosis", "symptoms": ["fatigue", "fever", "sore throat", "swollen lymph nodes", "loss of appetite"]},
+    
+    # Psychiatry
+    {"disease": "Major Depressive Disorder", "symptoms": ["depressed mood", "loss of interest", "weight changes", "insomnia", "fatigue", "difficulty concentrating"]},
+    {"disease": "Generalized Anxiety Disorder", "symptoms": ["excessive worry", "restlessness", "fatigue", "irritability", "muscle tension", "sleep disturbance"]},
+    {"disease": "Panic Attack", "symptoms": ["palpitations", "sweating", "trembling", "shortness of breath", "chest pain", "fear of dying"]},
+    
+    # Musculoskeletal
+    {"disease": "Osteoarthritis", "symptoms": ["joint pain", "stiffness", "tenderness", "loss of flexibility", "bone spurs"]},
+    {"disease": "Gout", "symptoms": ["severe joint pain", "swelling", "redness", "tenderness", "limited range of motion"]},
+    {"disease": "Fibromyalgia", "symptoms": ["widespread pain", "fatigue", "cognitive difficulties", "sleep problems", "headache"]},
+    
+    # Dermatology
+    {"disease": "Shingles", "symptoms": ["pain", "burning", "numbness", "red rash", "blisters", "itching"]},
+    {"disease": "Urticaria", "symptoms": ["itching", "red welts", "swelling"]}
 ]
 
         with self.driver.session() as session:

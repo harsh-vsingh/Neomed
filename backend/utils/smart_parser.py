@@ -7,6 +7,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 import boto3
 import os
 from dotenv import load_dotenv
+try:
+    from google.cloud import vision
+    HAS_GOOGLE_VISION = True
+except ImportError:
+    HAS_GOOGLE_VISION = False
 
 
 load_dotenv()
@@ -18,17 +23,16 @@ class SmartClinicalParser:
     """
 
     def __init__(self):
-        try:
-            self.textract = boto3.client(
-                'textract',
-                region_name=os.getenv('AWS_REGION', 'us-east-1'),
-                aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
-            )
-            self.has_aws = True
-        except Exception as e:
-            print(f" AWS Textract not configured: {e}")
-            self.has_aws = False
+        self.vision_client = None
+        self.has_google = False
+        
+        if HAS_GOOGLE_VISION and os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+            try:
+                self.vision_client = vision.ImageAnnotatorClient()
+                self.has_google = True
+                print("✅ Google Cloud Vision API configured.")
+            except Exception as e:
+                print(f"⚠️ Google Vision Init Failed: {e}")
     
 
     
@@ -83,19 +87,41 @@ class SmartClinicalParser:
             print("Processing image file...")
             ocr_text = ""
             
-            # 1. Try AWS Textract first
-            if self.has_aws:
-                print("Attempting AWS Textract...")
-                ocr_text = self.call_aws_textract(content)
+            # PRIORITY 1: Google Cloud Vision (Best Accuracy)
+            if self.has_google:
+                print("Attempting Google Cloud Vision...")
+                ocr_text = self.call_google_vision(content)
+
             
-            # 2. Fallback to Tesseract if AWS missing or failed
-            if not ocr_text or "Error" in ocr_text:  # 'Error' is returned by call_aws_textract on missing creds
-                print("⚠️ AWS Textract unavailable/failed. Falling back to local Tesseract OCR...")
+            # PRIORITY 3: Fallback to Tesseract
+            if not ocr_text or "Error" in ocr_text: 
+                print("⚠️ Cloud OCR unavailable/failed. Falling back to local Tesseract OCR...")
                 ocr_text = self.call_tesseract(content)
                 
             return ocr_text
         
         return extracted_text
+    
+
+    def call_google_vision(self, content: bytes) -> str:
+        """Sends bytes to Google Cloud Vision API"""
+        try:
+            image = vision.Image(content=content)
+            response = self.vision_client.text_detection(image=image)
+            
+            if response.error.message:
+                raise Exception(f"{response.error.message}")
+
+            texts = response.text_annotations
+            if texts:
+                # texts[0] contains the full text with line breaks preserved
+                return texts[0].description
+            return ""
+            
+        except Exception as e:
+            print(f"❌ Google Vision Failed: {e}")
+            return ""
+
     def call_tesseract(self, content: bytes) -> str:
         """Executes local OCR using Tesseract"""
         try:

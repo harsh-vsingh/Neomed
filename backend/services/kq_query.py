@@ -70,14 +70,16 @@ class ClinicalGraphEngine:
         // 6. Final Scoring Formula
         WITH d, matched_count, matched_symptoms, total_disease_symptoms, paths, symptom_breakdown,
              
-             // Normalize the specificty score (heuristic multiplier to bring it to ~50-60 range)
-             (weighted_symptom_score * 25) as specificity_score,
+             // OLD: (weighted_symptom_score * 25)
+             // NEW: Reduced multiplier to 15.0 to prevent premature 100% saturation.
+             // It now requires ~6-7 high-quality matching symptoms to approach high confidence.
+             (weighted_symptom_score * 15.0) as specificity_score,
              
              // Coverage Bonus: (Matches / Total Disease Symptoms)
              // Punishes diseases that have 100 symptoms if you only matched 2 generic ones
              (toFloat(matched_count) / toFloat(total_disease_symptoms + 1) * 20) as coverage_bonus,
              
-             // Manual Boost for Common Conditions
+             // Manual Boost for Common Conditions (High probability priors)
              CASE WHEN any(x IN sources WHERE x = 'Manual_Augmentation') THEN 15 ELSE 0 END as manual_boost
 
         WITH d, matched_count, matched_symptoms, total_disease_symptoms, paths,
@@ -87,7 +89,14 @@ class ClinicalGraphEngine:
                matched_count as matches, 
                matched_symptoms,
                total_disease_symptoms,
-               CASE WHEN final_score > 100 THEN 100 ELSE final_score END as confidence_score,
+               // CREDIBILITY CAP:
+               // Clip scores at 95% maximum.
+               // Even with perfect text matches, a diagnosis is never 100% certain without tests/lab work.
+               CASE 
+                  WHEN final_score > 95 THEN 95
+                  ELSE final_score 
+               END as confidence_score,
+               
                [p in paths | {
                     start_node: nodes(p)[0].name, 
                     relationship: type(relationships(p)[0]),
