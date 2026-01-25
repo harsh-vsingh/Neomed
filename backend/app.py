@@ -92,13 +92,13 @@ async def analyze_text(request: NoteRequest):
             try:
                 timeline_with_entities, citation_map = process_date_chunks(
                     chunks_for_ner,
-                    context_window=5,
+                    context_window=3,
                     confidence_threshold=0.5,
                     similarity_threshold=0.8
                 )
             except Exception as e:
                 print(f"Entity processing error: {e}")
-                timeline_with_entities = [{"date": c["date"], "entities": []} for c in chunks_for_ner]
+                timeline_with_entities = [{"date": c["date"], "text": c["text"], "entities": []} for c in chunks_for_ner]
                 citation_map = {}
                 warnings.append("Entity extraction failed for timeline chunks")
             
@@ -186,13 +186,13 @@ async def analyze_file(file: UploadFile = File(...)):
             try:
                 timeline_with_entities, citation_map = process_date_chunks(
                     chunks_for_ner,
-                    context_window=5,
+                    context_window=3,
                     confidence_threshold=0.5,
                     similarity_threshold=0.8
                 )
             except Exception as e:
                 print(f"Entity processing error: {e}")
-                timeline_with_entities = [{"date": c["date"], "entities": []} for c in chunks_for_ner]
+                timeline_with_entities = [{"date": c["date"], "text": c["text"], "entities": []} for c in chunks_for_ner]
                 citation_map = {}
                 warnings.append("Entity extraction failed for timeline chunks")
 
