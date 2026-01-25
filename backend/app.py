@@ -92,7 +92,7 @@ async def analyze_text(request: NoteRequest):
             try:
                 timeline_with_entities, citation_map = process_date_chunks(
                     chunks_for_ner,
-                    context_window=3,
+                    context_window=8,
                     confidence_threshold=0.5,
                     similarity_threshold=0.8
                 )
@@ -186,7 +186,7 @@ async def analyze_file(file: UploadFile = File(...)):
             try:
                 timeline_with_entities, citation_map = process_date_chunks(
                     chunks_for_ner,
-                    context_window=3,
+                    context_window=8,
                     confidence_threshold=0.5,
                     similarity_threshold=0.8
                 )

@@ -16,62 +16,86 @@ class ClinicalGraphEngine:
 
     def run_differential_diagnosis(self, symptoms: list):
         """
-        Hybrid Scoring System:
-        - Base score from absolute matches (each match = 15 points)
-        - Bonus from match percentage (up to +30 points)
-        - Common disease boost (+15 points for manual augmentation)
-        Maximum possible score: 100
+        Advanced Bayesian-style Scoring System:
+        1. Symptom Specificity (IDF): Rare symptoms weigh significantly more than common ones.
+           - Matches 'Chest Pain' >> Matches 'Fatigue'
+        2. Match Quality: Exact string matches scored higher than partial/fuzzy matches.
+        3. Disease Coverage: How much of the disease's profile is explained by inputs?
+        4. Manual Boost: Preserves manual augmentation priority.
         """
         query = """
-        // 1. Find Symptom Nodes (Fuzzy Match Case Insensitive)
+        // 1. Find matched symptoms and calculate their Global Frequency (Rarity)
         UNWIND $symptoms AS input_symptom
         MATCH (s:Symptom)
         WHERE toLower(s.name) CONTAINS toLower(input_symptom)
         
-        // 2. Traverse to Disease
+        // Calculate Specificity: Count how many diseases trigger this symptom total
+        // We use this to down-weight generic symptoms like 'Fatigue'
+        MATCH (s)<-[:DpS]-(any_d:Disease)
+        WITH s, input_symptom, count(any_d) as global_freq
+        
+        // 2. Calculate Per-Symptom Score
+        WITH s, 
+             // A. Match Quality: Exact match gets 100% weight, Partial gets 50%
+             CASE 
+                WHEN toLower(s.name) = toLower(input_symptom) THEN 1.0 
+                ELSE 0.5 
+             END as match_quality,
+             
+             // B. Rarity Weight (Inverse Log Frequency)
+             // Rare symptoms (low freq) get high scores. Common ones get low scores.
+             // Adding +5 to log denominator prevents division by zero and smooths extreme values
+             1.0 / log10(global_freq + 5) as rarity_weight
+             
+        // 3. Traverse to Candidate Diseases
         MATCH path = (d:Disease)-[r:DpS]->(s)
         
-        // 3. Aggregate Matched Symptoms
-        WITH d, count(distinct s) as matched_count, collect(distinct s.name) as matched_symptoms, 
-             collect(path) as paths, collect(r.source) as sources
-        
-        // 4. Get Total Symptom Count for this Disease
+        // 4. Aggregate Scores per Disease
+        WITH d, 
+             sum(match_quality * rarity_weight) as weighted_symptom_score,
+             count(distinct s) as matched_count,
+             collect(distinct s.name) as matched_symptoms,
+             collect(distinct {
+                symptom: s.name,
+                weight: round(rarity_weight * 100) / 100
+             }) as symptom_breakdown,
+             collect(path) as paths, 
+             collect(r.source) as sources
+             
+        // 5. Get Disease Context (Total Dictionary Definitions)
         MATCH (d)-[:DpS]->(all_symptoms:Symptom)
-        WITH d, matched_count, matched_symptoms, paths, sources, count(distinct all_symptoms) as total_disease_symptoms
-        
-        // 5. Hybrid Scoring System
-        WITH d, matched_count, matched_symptoms, paths, sources, total_disease_symptoms,
-             // Base score: 15 points per match (capped at 60)
-             CASE 
-                WHEN matched_count >= 4 THEN 60
-                ELSE matched_count * 15
-             END as match_score,
-             // Percentage bonus: up to 30 points based on coverage
-             toFloat(matched_count) / toFloat(total_disease_symptoms) * 30 as percentage_bonus,
-             // Common disease boost: +15 for manually augmented
-             CASE WHEN any(x IN sources WHERE x = 'Manual_Augmentation') THEN 15 ELSE 0 END as common_boost
-        
-        WHERE matched_count >= 1
-        
-        WITH d, matched_count, matched_symptoms, paths, sources, total_disease_symptoms,
-             round(match_score + percentage_bonus + common_boost) as confidence_score
-        
+        WITH d, weighted_symptom_score, matched_count, matched_symptoms, symptom_breakdown, paths, sources, 
+             count(distinct all_symptoms) as total_disease_symptoms
+
+        // 6. Final Scoring Formula
+        WITH d, matched_count, matched_symptoms, total_disease_symptoms, paths, symptom_breakdown,
+             
+             // Normalize the specificty score (heuristic multiplier to bring it to ~50-60 range)
+             (weighted_symptom_score * 25) as specificity_score,
+             
+             // Coverage Bonus: (Matches / Total Disease Symptoms)
+             // Punishes diseases that have 100 symptoms if you only matched 2 generic ones
+             (toFloat(matched_count) / toFloat(total_disease_symptoms + 1) * 20) as coverage_bonus,
+             
+             // Manual Boost for Common Conditions
+             CASE WHEN any(x IN sources WHERE x = 'Manual_Augmentation') THEN 15 ELSE 0 END as manual_boost
+
+        WITH d, matched_count, matched_symptoms, total_disease_symptoms, paths,
+             round(specificity_score + coverage_bonus + manual_boost) as final_score
+
         RETURN d.name as disease,
                matched_count as matches, 
                matched_symptoms,
                total_disease_symptoms,
-               CASE 
-                  WHEN confidence_score > 100 THEN 100
-                  ELSE confidence_score
-               END as confidence_score,
+               CASE WHEN final_score > 100 THEN 100 ELSE final_score END as confidence_score,
                [p in paths | {
                     start_node: nodes(p)[0].name, 
                     relationship: type(relationships(p)[0]),
                     end_node: nodes(p)[1].name,
                     source_db: relationships(p)[0].source 
                }] as trace_chain
-        // ORDER BY: Prioritize confidence score
-        ORDER BY confidence_score DESC, matched_count DESC, total_disease_symptoms ASC
+        
+        ORDER BY confidence_score DESC, matched_count DESC
         LIMIT 5
         """
         

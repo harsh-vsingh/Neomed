@@ -79,32 +79,58 @@ class SmartClinicalParser:
         is_scanned_pdf = filename.endswith('.pdf') and len(extracted_text.strip()) < 50
         is_image = filename.endswith(('.png', '.jpg', '.jpeg', '.tiff'))
 
-        if(is_image):
-            print("calling AWS Textract for image")
-            return self.call_aws_textract(content)
+        if is_image:
+            print("Processing image file...")
+            ocr_text = ""
+            
+            # 1. Try AWS Textract first
+            if self.has_aws:
+                print("Attempting AWS Textract...")
+                ocr_text = self.call_aws_textract(content)
+            
+            # 2. Fallback to Tesseract if AWS missing or failed
+            if not ocr_text or "Error" in ocr_text:  # 'Error' is returned by call_aws_textract on missing creds
+                print("⚠️ AWS Textract unavailable/failed. Falling back to local Tesseract OCR...")
+                ocr_text = self.call_tesseract(content)
+                
+            return ocr_text
         
         return extracted_text
+    def call_tesseract(self, content: bytes) -> str:
+        """Executes local OCR using Tesseract"""
+        try:
+            image = Image.open(io.BytesIO(content))
+            text = pytesseract.image_to_string(image)
+            return text
+        except Exception as e:
+            print(f"❌ Local Tesseract OCR Failed: {e}")
+            return ""
     
     def call_aws_textract(self, content: bytes) -> str:
         """Sends bytes to AWS Textract and returns raw line text"""
         if not self.has_aws:
+            print("❌ call_aws_textract: AWS Check skipped (self.has_aws is False)")
             return "Error: AWS Credentials missing."
             
         try:
+            print("🚀 Sending request to AWS Textract...")
             response = self.textract.detect_document_text(
                 Document={'Bytes': content}
             )
             
             text_blocks = []
-            for item in response['Blocks']:
-                if item['BlockType'] == 'LINE':
-                    text_blocks.append(item['Text'])
+            if 'Blocks' in response:
+                for item in response['Blocks']:
+                    if item['BlockType'] == 'LINE':
+                        text_blocks.append(item['Text'])
             
-            return "\n".join(text_blocks)
+            result = "\n".join(text_blocks)
+            print(f"✅ AWS Textract Success: Extracted {len(result)} chars")
+            return result
             
         except Exception as e:
-            print(f" AWS Textract Failed: {e}")
-            return ""
+            print(f"❌ AWS Textract Failed: {e}")
+            return "Error: AWS API Call Failed"
 
     def _clean_noise(self, text: str) -> str:
         """Sanitizes the text stream."""
