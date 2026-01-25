@@ -95,8 +95,10 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
     setActiveTab('summary');
     setResult(null);
 
+
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
     try {
-      const response = await axios.post("http://localhost:8000/analyze/text", {
+      const response = await axios.post(`${API_BASE_URL}/analyze/text`, {
         text: inputText,
       });
       setResult(response.data);
@@ -121,7 +123,7 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
     formData.append("file", file);
 
     try {
-      const response = await axios.post("http://localhost:8000/analyze/file", formData, {
+      const response = await axios.post(`${API_BASE_URL}/analyze/file`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -628,10 +630,10 @@ export default function Dashboard({ toggleTheme, currentTheme }: { toggleTheme: 
 
                                     {/* Central Disease Node */}
                                     <div className="flex flex-col items-center mb-4">
-                                      <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg font-bold text-sm border-2 border-indigo-400">
+                                      <div className="bg-linear-to-br from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg font-bold text-sm border-2 border-indigo-400">
                                         {diag.disease}
                                       </div>
-                                      <div className="w-0.5 h-6 bg-gradient-to-b from-indigo-400 to-slate-300 dark:to-slate-700"></div>
+                                      <div className="w-0.5 h-6 bg-linear-to-b from-indigo-400 to-slate-300 dark:to-slate-700"></div>
                                     </div>
 
                                     {/* Symptom Connections Grid */}

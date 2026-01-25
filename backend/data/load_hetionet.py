@@ -2,9 +2,18 @@ import json
 from neo4j import GraphDatabase
 from tqdm import tqdm
 import time
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 class HetionetLoader:
-    def __init__(self, uri="bolt://localhost:7687", user="neo4j", password="password123"):
+    def __init__(self):
+        uri = os.getenv("NEO4J_URI")
+        user = os.getenv("NEO4J_USER")
+        password = os.getenv("NEO4J_PASSWORD")
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         
     def close(self):
@@ -32,6 +41,7 @@ class HetionetLoader:
 
     def load_nodes(self, filepath="hetionet_nodes_all.json"):
         """Load nodes into Neo4j"""
+        filepath = os.path.join(BASE_DIR, filepath)
         print(f"📂 Loading nodes from {filepath}...")
         
         with open(filepath, 'r') as f:
@@ -61,6 +71,7 @@ class HetionetLoader:
                 
     def load_edges(self, filepath="hetionet_edges_all.json"):
         """Load relationships into Neo4j"""
+        filepath = os.path.join(BASE_DIR, filepath)
         print(f"📂 Loading edges from {filepath}...")
         
         with open(filepath, 'r') as f:
