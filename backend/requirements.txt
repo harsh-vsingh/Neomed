@@ -1,16 +1,17 @@
 # Core Framework
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
-pydantic==2.10.3
-python-multipart==0.0.20
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.10.3
+python-multipart
 
 # Data Processing
-pandas==2.2.3
-numpy==2.2.1
+# REMOVED strict pin on numpy to allow version < 2.0
+pandas>=2.2.0
+numpy<2.0.0
 
 # NLP & Embeddings
-sentence-transformers==3.3.1
-transformers==4.47.1
+sentence-transformers>=3.3.0
+transformers>=4.47.0
 torchvision
 torchaudio
 
@@ -18,24 +19,25 @@ torchaudio
 faiss-cpu
 
 # Knowledge Graph
-neo4j==5.27.0
-py2neo==2021.2.4
+neo4j>=5.27.0
+py2neo>=2021.2.4
 
 # LLM Integration
-openai==1.57.4
+openai>=1.57.0
 google-generativeai
 langchain-google-genai
 
 # Utilities
-python-dotenv==1.0.1
-requests==2.32.3
-tqdm==4.67.1
+python-dotenv
+requests
+tqdm
 
 # Document Parsers
-langchain==0.3.13
-langchain-community==0.3.13
-pypdf==3.17.4
-pytesseract==0.3.10
-Pillow>=10.0.0
+# Use >= to allow pip to find compatible versions
+langchain>=0.3.0
+langchain-community>=0.3.0
+pypdf
+pytesseract
+Pillow
 boto3
 google-cloud-vision
