@@ -202,8 +202,8 @@ def extract_medical_entities(text: str, context_window: int = 8,
     return grouped_results, citation_counter
 
 def process_date_chunks(chunks: List[Dict[str, Any]], 
-                       context_window: int = 8,
-                       confidence_threshold: float = 0.6,
+                       context_window: int = 7,
+                       confidence_threshold: float = 0.65,
                        similarity_threshold: float = 0.8) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     
     results = []
